@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.plugins.changes.model.Action;
 import org.apache.maven.plugins.changes.model.Release;
 import org.slf4j.Logger;
@@ -50,9 +50,9 @@ public class ReleaseUtils {
      * @param releases list of releases
      * @param pomVersion Version of the artifact
      * @return A <code>Release</code> that matches the next release of the current project
-     * @throws org.apache.maven.plugin.MojoExecutionException If a release can't be found
+     * @throws org.apache.maven.api.plugin.MojoException If a release can't be found
      */
-    public static Release getLatestRelease(List<Release> releases, String pomVersion) throws MojoExecutionException {
+    public static Release getLatestRelease(List<Release> releases, String pomVersion) throws MojoException {
         // Remove "-SNAPSHOT" from the end, if it's there
         if (pomVersion != null && pomVersion.endsWith(SNAPSHOT_SUFFIX)) {
             pomVersion = pomVersion.substring(0, pomVersion.length() - SNAPSHOT_SUFFIX.length());
@@ -62,8 +62,8 @@ public class ReleaseUtils {
         Release release = getRelease(releases, pomVersion);
 
         if (release == null) {
-            throw new MojoExecutionException("Couldn't find the release '" + pomVersion
-                    + "' among the supplied releases: " + toString(releases));
+            throw new MojoException("Couldn't find the release '" + pomVersion + "' among the supplied releases: "
+                    + toString(releases));
         }
 
         return release;

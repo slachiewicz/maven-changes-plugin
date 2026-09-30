@@ -18,7 +18,8 @@
  */
 package org.apache.maven.plugins.changes;
 
-import org.apache.maven.project.MavenProject;
+import org.apache.maven.api.Project;
+import org.apache.maven.api.model.IssueManagement;
 
 /**
  * A utility class for working with Project objects.
@@ -40,15 +41,15 @@ public final class ProjectUtils {
      * @return <code>null</code> if the &lt;issueManagement&gt; element of the POM is complete, otherwise a String
      *         containing the reason of the failed validation.
      */
-    public static String validateIssueManagement(
-            MavenProject project, String issueManagementSystem, String mojoResult) {
-        if (project.getIssueManagement() == null) {
+    public static String validateIssueManagement(Project project, String issueManagementSystem, String mojoResult) {
+        IssueManagement issueManagement = project.getModel().getIssueManagement();
+        if (issueManagement == null) {
             return "No Issue Management set. No " + mojoResult + " will be generated.";
-        } else if ((project.getIssueManagement().getUrl() == null)
-                || (project.getIssueManagement().getUrl().trim().isEmpty())) {
+        } else if ((issueManagement.getUrl() == null)
+                || (issueManagement.getUrl().trim().isEmpty())) {
             return "No URL set in Issue Management. No " + mojoResult + " will be generated.";
-        } else if ((project.getIssueManagement().getSystem() != null)
-                && !(project.getIssueManagement().getSystem().equalsIgnoreCase(issueManagementSystem))) {
+        } else if ((issueManagement.getSystem() != null)
+                && !(issueManagement.getSystem().equalsIgnoreCase(issueManagementSystem))) {
             return "The " + mojoResult + " only supports " + issueManagementSystem + ".  No " + mojoResult
                     + " will be generated.";
         }

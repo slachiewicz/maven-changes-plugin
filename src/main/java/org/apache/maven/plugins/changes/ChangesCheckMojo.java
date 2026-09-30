@@ -24,9 +24,9 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 import org.apache.maven.plugins.changes.model.Release;
 
 /**
@@ -37,7 +37,7 @@ import org.apache.maven.plugins.changes.model.Release;
  * @author Dennis Lundberg
  * @since 2.4
  */
-@Mojo(name = "changes-check", threadSafe = true)
+@Mojo(name = "changes-check")
 public class ChangesCheckMojo extends AbstractChangesMojo {
     /**
      * The format that a correct release date should have. This value will be used as a pattern to try to parse a date.
@@ -62,7 +62,7 @@ public class ChangesCheckMojo extends AbstractChangesMojo {
     /**
      * The path of the <code>changes.xml</code> file that will be checked.
      */
-    @Parameter(property = "changes.xmlPath", defaultValue = "src/changes/changes.xml")
+    @Parameter(property = "changes.xmlPath", defaultValue = "${project.basedir}/src/changes/changes.xml")
     private File xmlPath;
 
     /**
@@ -76,9 +76,9 @@ public class ChangesCheckMojo extends AbstractChangesMojo {
     /**
      * Check that the latest release contains a valid release date.
      *
-     * @throws MojoExecutionException in case of errors.
+     * @throws MojoException in case of errors.
      */
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         // Run only at the execution root
         if (runOnlyAtExecutionRoot && !isThisTheExecutionRoot()) {
             getLog().info("Skipping the changes check in this project because it's not the Execution Root");
@@ -90,8 +90,7 @@ public class ChangesCheckMojo extends AbstractChangesMojo {
                 Release release = ReleaseUtils.getLatestRelease(xml.getReleaseList(), version);
 
                 if (!isValidDate(release.getDateRelease(), releaseDateFormat, releaseDateLocale)) {
-                    throw new MojoExecutionException(
-                            "The file " + xmlPath.getAbsolutePath() + " has an invalid release date.");
+                    throw new MojoException("The file " + xmlPath.getAbsolutePath() + " has an invalid release date.");
                 }
             } else {
                 getLog().warn("The file " + xmlPath.getAbsolutePath() + " does not exist.");

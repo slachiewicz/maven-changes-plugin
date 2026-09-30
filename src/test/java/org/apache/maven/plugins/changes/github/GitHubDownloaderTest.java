@@ -19,31 +19,23 @@
 package org.apache.maven.plugins.changes.github;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
-import org.apache.maven.model.IssueManagement;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.Project;
+import org.apache.maven.api.model.IssueManagement;
+import org.apache.maven.api.model.Model;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.settings.Server;
+import org.apache.maven.api.settings.Settings;
 import org.apache.maven.plugins.changes.issues.Issue;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.settings.Server;
-import org.apache.maven.settings.Settings;
-import org.apache.maven.settings.building.DefaultSettingsProblem;
-import org.apache.maven.settings.building.SettingsProblem.Severity;
-import org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest;
-import org.apache.maven.settings.crypto.SettingsDecrypter;
-import org.apache.maven.settings.crypto.SettingsDecryptionRequest;
-import org.apache.maven.settings.crypto.SettingsDecryptionResult;
 import org.junit.jupiter.api.Test;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHUser;
-import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.Mockito.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,68 +63,50 @@ public class GitHubDownloaderTest {
     }
 
     @Test
-    public void testConfigureAuthenticationWithProblems() throws Exception {
-        IssueManagement issueManagement = newGitHubIssueManagement();
-        GitHubDownloader gitHubDownloader = newGitHubDownloader(issueManagement);
-        Settings settings = new Settings();
-        Server server = newServer("github-server");
-        settings.addServer(server);
-        SettingsDecrypter decrypter = mock(SettingsDecrypter.class);
-        SettingsDecryptionResult result = mock(SettingsDecryptionResult.class);
+    public void testConfigureAuthenticationWithServer() throws Exception {
+        GitHubDownloader gitHubDownloader = newGitHubDownloader(newGitHubIssueManagement());
+        Settings settings = Settings.newBuilder()
+                .servers(java.util.Collections.singletonList(newServer("github-server")))
+                .build();
         Log log = mock(Log.class);
-        when(result.getProblems())
-                .thenReturn(Collections.singletonList(
-                        new DefaultSettingsProblem("Ups " + server.getId(), Severity.ERROR, null, -1, -1, null)));
-        when(result.getServer()).thenReturn(server);
-        when(decrypter.decrypt(any(SettingsDecryptionRequest.class))).thenReturn(result);
 
-        gitHubDownloader.configureAuthentication(decrypter, "github-server", settings, log);
+        gitHubDownloader.configureAuthentication("github-server", settings, log);
 
-        verify(log).error("Ups github-server", null);
-        ArgumentCaptor<SettingsDecryptionRequest> argument = ArgumentCaptor.forClass(SettingsDecryptionRequest.class);
-        verify(decrypter).decrypt(argument.capture());
-        List<Server> servers = argument.getValue().getServers();
-        assertEquals(1, servers.size());
-        assertSame(server, servers.get(0));
+        verify(log, never()).warn(anyString());
     }
 
     @Test
     public void testConfigureAuthenticationWithNoServer() throws Exception {
-        IssueManagement issueManagement = newGitHubIssueManagement();
-        GitHubDownloader gitHubDownloader = newGitHubDownloader(issueManagement);
-        Settings settings = new Settings();
-        Server server = newServer("not-the-right-one");
-        settings.addServer(server);
-        SettingsDecrypter decrypter = mock(SettingsDecrypter.class);
-        SettingsDecryptionResult result = mock(SettingsDecryptionResult.class);
+        GitHubDownloader gitHubDownloader = newGitHubDownloader(newGitHubIssueManagement());
+        Settings settings = Settings.newBuilder()
+                .servers(java.util.Collections.singletonList(newServer("not-the-right-one")))
+                .build();
         Log log = mock(Log.class);
-        when(result.getProblems()).thenReturn(Collections.emptyList());
-        when(result.getServer()).thenReturn(server);
-        when(decrypter.decrypt(new DefaultSettingsDecryptionRequest(server))).thenReturn(result);
 
-        gitHubDownloader.configureAuthentication(decrypter, "github-server", settings, log);
+        gitHubDownloader.configureAuthentication("github-server", settings, log);
 
         verify(log).warn("Can't find server id [github-server] configured in settings.xml");
     }
 
     private Server newServer(String id) {
-        Server server = new Server();
-        server.setId(id);
-        server.setUsername("some-user");
-        server.setPassword("Sup3rSecret");
-        return server;
+        return Server.newBuilder()
+                .id(id)
+                .username("some-user")
+                .password("Sup3rSecret")
+                .build();
     }
 
     private GitHubDownloader newGitHubDownloader(IssueManagement issueManagement) throws IOException {
-        MavenProject mavenProject = new MavenProject();
-        mavenProject.setIssueManagement(issueManagement);
-        return new GitHubDownloader(mavenProject, true, false);
+        Project project = mock(Project.class);
+        when(project.getModel())
+                .thenReturn(Model.newBuilder().issueManagement(issueManagement).build());
+        return new GitHubDownloader(project, true, false);
     }
 
     private IssueManagement newGitHubIssueManagement() {
-        IssueManagement issueManagement = new IssueManagement();
-        issueManagement.setSystem("GitHub");
-        issueManagement.setUrl("https://github.com/dadoonet/spring-elasticsearch/issues/");
-        return issueManagement;
+        return IssueManagement.newBuilder()
+                .system("GitHub")
+                .url("https://github.com/dadoonet/spring-elasticsearch/issues/")
+                .build();
     }
 }

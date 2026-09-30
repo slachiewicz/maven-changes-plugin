@@ -18,7 +18,7 @@
  */
 package org.apache.maven.plugins.changes.announcement;
 
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.plugin.annotations.Parameter;
 import org.apache.maven.plugins.changes.AbstractChangesMojo;
 
 /**

@@ -21,7 +21,7 @@ package org.apache.maven.plugins.changes.issues;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.plugins.changes.IssueType;
 
 /**
@@ -60,11 +60,11 @@ public abstract class AbstractIssueManagementSystem implements IssueManagementSy
      * (non-Javadoc)
      * @see org.apache.maven.plugins.issues.IssueManagementSystem#applyConfiguration(java.util.Map)
      */
-    public void applyConfiguration(Map<String, String> issueTypes) throws MojoExecutionException {
+    public void applyConfiguration(Map<String, String> issueTypes) throws MojoException {
         for (Map.Entry<String, String> me : issueTypes.entrySet()) {
             IssueType type = IssueType.lookupByKey(me.getKey());
             if (type == null) {
-                throw new MojoExecutionException("Invalid issue action " + me.getKey());
+                throw new MojoException("Invalid issue action " + me.getKey());
             }
             String imsTypes = me.getValue();
             String[] imsTypeArray = imsTypes.split(",");

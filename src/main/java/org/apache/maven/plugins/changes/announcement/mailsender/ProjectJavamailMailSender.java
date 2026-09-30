@@ -30,7 +30,6 @@ import javax.mail.internet.MimeMessage;
 import java.util.Date;
 import java.util.Properties;
 
-import org.codehaus.plexus.mailsender.AbstractMailSender;
 import org.codehaus.plexus.mailsender.MailMessage;
 import org.codehaus.plexus.mailsender.MailSenderException;
 import org.codehaus.plexus.mailsender.util.DateFormatUtils;
@@ -41,11 +40,82 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class for sending email.
  */
-public class ProjectJavamailMailSender extends AbstractMailSender {
+public class ProjectJavamailMailSender {
+    /** The default SMTP port. */
+    public static final int DEFAULT_SMTP_PORT = 25;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ProjectJavamailMailSender.class);
     private static final String SSL_FACTORY = "javax.net.ssl.SSLSocketFactory";
 
     private Properties props;
+
+    private String smtpHost;
+
+    private int smtpPort;
+
+    private String username;
+
+    private String password;
+
+    private boolean sslMode;
+
+    private boolean tlsEnabled;
+
+    public String getSmtpHost() {
+        return smtpHost;
+    }
+
+    public void setSmtpHost(String smtpHost) {
+        this.smtpHost = smtpHost;
+    }
+
+    public int getSmtpPort() {
+        return smtpPort;
+    }
+
+    public void setSmtpPort(int smtpPort) {
+        this.smtpPort = smtpPort;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public boolean isSslMode() {
+        return sslMode;
+    }
+
+    public boolean isTlsEnabled() {
+        return tlsEnabled;
+    }
+
+    public void setSslMode(boolean sslMode, boolean tlsEnabled) {
+        this.sslMode = sslMode;
+        this.tlsEnabled = tlsEnabled;
+    }
+
+    private void verify(MailMessage mail) throws MailSenderException {
+        if (mail.getFrom().getMailbox() == null) {
+            throw new MailSenderException("From mailbox isn't set.");
+        }
+        if (mail.getToAddresses().isEmpty()
+                && mail.getCcAddresses().isEmpty()
+                && mail.getBccAddresses().isEmpty()) {
+            throw new MailSenderException("The mail requires at least one recipient.");
+        }
+    }
 
     // ----------------------------------------------------------------------
     // Component Lifecycle
@@ -88,7 +158,6 @@ public class ProjectJavamailMailSender extends AbstractMailSender {
     // ----------------------------------------------------------------------
     // MailSender Implementation
     // ----------------------------------------------------------------------
-    @Override
     public void send(MailMessage mail) throws MailSenderException {
         verify(mail);
 

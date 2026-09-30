@@ -55,19 +55,14 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicHeader;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.Project;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.settings.Proxy;
+import org.apache.maven.api.settings.Server;
+import org.apache.maven.api.settings.Settings;
 import org.apache.maven.plugins.changes.issues.Issue;
 import org.apache.maven.plugins.changes.issues.IssueUtils;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.settings.Proxy;
-import org.apache.maven.settings.Server;
-import org.apache.maven.settings.Settings;
-import org.apache.maven.settings.building.SettingsProblem;
-import org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest;
-import org.apache.maven.settings.crypto.SettingsDecrypter;
-import org.apache.maven.settings.crypto.SettingsDecryptionResult;
 
 /**
  * Use the JIRA REST API to download issues. This class assumes that the URL points to a copy of JIRA that
@@ -79,12 +74,10 @@ public class RestJiraDownloader {
     private Log log;
 
     /** The maven project. */
-    private MavenProject project;
+    private Project project;
 
     /** The maven settings. */
     private Settings settings;
-
-    private SettingsDecrypter settingsDecrypter;
 
     /** Filter the JIRA query based on the current version */
     private boolean onlyCurrentVersion;
@@ -180,7 +173,7 @@ public class RestJiraDownloader {
      *
      * @param thisProject The project to set
      */
-    public void setMavenProject(MavenProject thisProject) {
+    public void setMavenProject(Project thisProject) {
         this.project = thisProject;
     }
 
@@ -194,10 +187,6 @@ public class RestJiraDownloader {
 
     public void setSettings(Settings settings) {
         this.settings = settings;
-    }
-
-    public void setSettingsDecrypter(SettingsDecrypter settingsDecrypter) {
-        this.settingsDecrypter = settingsDecrypter;
     }
 
     public void setOnlyCurrentVersion(boolean onlyCurrentVersion) {
@@ -349,8 +338,8 @@ public class RestJiraDownloader {
 
     public void doExecute() throws Exception {
 
-        Map<String, String> urlMap =
-                JiraHelper.getJiraUrlAndProjectName(project.getIssueManagement().getUrl());
+        Map<String, String> urlMap = JiraHelper.getJiraUrlAndProjectName(
+                project.getModel().getIssueManagement().getUrl());
         String jiraUrl = urlMap.get("url");
         String jiraProject = urlMap.get("project");
 
@@ -363,7 +352,7 @@ public class RestJiraDownloader {
     }
 
     private void search(CloseableHttpClient client, String jiraProject, String jiraUrl)
-            throws IOException, MojoExecutionException {
+            throws IOException, MojoException {
         String jqlQuery = new JqlQueryBuilder(log)
                 .urlEncode(false)
                 .project(jiraProject)
@@ -433,7 +422,7 @@ public class RestJiraDownloader {
         }
     }
 
-    private void reportErrors(HttpResponse resp) throws IOException, MojoExecutionException {
+    private void reportErrors(HttpResponse resp) throws IOException, MojoException {
         ContentType contentType = ContentType.get(resp.getEntity());
         if (contentType != null && contentType.getMimeType().equals(ContentType.APPLICATION_JSON.getMimeType())) {
             JsonNode errorTree = getResponseTree(resp);
@@ -450,12 +439,12 @@ public class RestJiraDownloader {
                 }
             }
         }
-        throw new MojoExecutionException(String.format(
+        throw new MojoException(String.format(
                 "Failed to query issues; response %d", resp.getStatusLine().getStatusCode()));
     }
 
     private void resolveIds(CloseableHttpClient client, String jiraUrl, String jiraProject)
-            throws IOException, MojoExecutionException, MojoFailureException {
+            throws IOException, MojoException, MojoException {
         resolveList(
                 resolvedComponentIds,
                 client,
@@ -476,7 +465,7 @@ public class RestJiraDownloader {
 
     private void resolveList(
             List<String> targetList, CloseableHttpClient client, String what, String input, String listRestUrlPattern)
-            throws IOException, MojoExecutionException, MojoFailureException {
+            throws IOException, MojoException, MojoException {
         if (input == null || input.isEmpty()) {
             return;
         }
@@ -497,7 +486,7 @@ public class RestJiraDownloader {
         }
     }
 
-    private String resolveOneItem(JsonNode items, String what, String nameOrId) throws MojoFailureException {
+    private String resolveOneItem(JsonNode items, String what, String nameOrId) throws MojoException {
         for (int cx = 0; cx < items.size(); cx++) {
             JsonNode item = items.get(cx);
             if (nameOrId.equals(item.get("id").asText())) {
@@ -506,7 +495,7 @@ public class RestJiraDownloader {
                 return item.get("id").asText();
             }
         }
-        throw new MojoFailureException(String.format("Could not find %s %s.", what, nameOrId));
+        throw new MojoException(String.format("Could not find %s %s.", what, nameOrId));
     }
 
     private void buildIssues(JsonNode issuesNode, String jiraUrl) {
@@ -707,20 +696,12 @@ public class RestJiraDownloader {
         return node != null && !node.isNull();
     }
 
-    private void doSessionAuth(CloseableHttpClient client, String jiraUrl)
-            throws IOException, MojoExecutionException, NoRest {
+    private void doSessionAuth(CloseableHttpClient client, String jiraUrl) throws IOException, MojoException, NoRest {
 
-        Server server = settings.getServer(jiraServerId);
+        Server server = getServer(jiraServerId);
         if (server != null) {
-            SettingsDecryptionResult result = settingsDecrypter.decrypt(new DefaultSettingsDecryptionRequest(server));
-            if (!result.getProblems().isEmpty()) {
-                for (SettingsProblem problem : result.getProblems()) {
-                    log.error(problem.getMessage());
-                }
-            } else {
-                jiraUser = result.getServer().getUsername();
-                jiraPassword = result.getServer().getPassword();
-            }
+            jiraUser = server.getUsername();
+            jiraPassword = server.getPassword();
         }
 
         if (jiraUser != null) {
@@ -744,7 +725,7 @@ public class RestJiraDownloader {
                         // place.
                         throw new NoRest();
                     }
-                    throw new MojoExecutionException(String.format("Authentication failure status %d.", statusCode));
+                    throw new MojoException(String.format("Authentication failure status %d.", statusCode));
                 }
             }
         }
@@ -774,18 +755,21 @@ public class RestJiraDownloader {
         return httpClientBuilder.build();
     }
 
-    private Proxy getProxy(String jiraUrl) {
-        Proxy proxy = settings.getActiveProxy();
-        if (proxy != null) {
-            SettingsDecryptionResult result = settingsDecrypter.decrypt(new DefaultSettingsDecryptionRequest(proxy));
-            if (!result.getProblems().isEmpty()) {
-                for (SettingsProblem problem : result.getProblems()) {
-                    log.error(problem.getMessage());
-                }
-            } else {
-                proxy = result.getProxy();
-            }
+    private Server getServer(String serverId) {
+        if (serverId == null) {
+            return null;
         }
+        return settings.getServers().stream()
+                .filter(server -> serverId.equals(server.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Proxy getProxy(String jiraUrl) {
+        Proxy proxy = settings.getProxies().stream()
+                .filter(Proxy::isActive)
+                .findFirst()
+                .orElse(null);
 
         if (proxy != null && proxy.getNonProxyHosts() != null) {
             URI jiraUri = URI.create(jiraUrl);

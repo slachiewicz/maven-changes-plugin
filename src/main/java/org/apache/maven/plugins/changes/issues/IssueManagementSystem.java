@@ -20,7 +20,7 @@ package org.apache.maven.plugins.changes.issues;
 
 import java.util.Map;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.plugins.changes.IssueType;
 
 /**
@@ -52,7 +52,7 @@ public interface IssueManagementSystem {
      *
      * @param issueTypes The mapping of issue types used in this issue management system to the ones used in a
      *            changes.xml file
-     * @throws MojoExecutionException If the configuration fails
+     * @throws MojoException If the configuration fails
      */
-    void applyConfiguration(Map<String, String> issueTypes) throws MojoExecutionException;
+    void applyConfiguration(Map<String, String> issueTypes) throws MojoException;
 }

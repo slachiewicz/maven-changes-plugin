@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.apache.maven.api.Project;
 import org.apache.maven.plugins.changes.issues.Issue;
-import org.apache.maven.project.MavenProject;
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.client.XmlRpcClient;
 import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
@@ -45,7 +45,7 @@ import org.apache.xmlrpc.client.XmlRpcCommonsTransportFactory;
  */
 public class TracDownloader {
     /** The Maven project. */
-    private MavenProject project;
+    private Project project;
 
     /** The Trac query for searching for tickets. */
     private String query;
@@ -138,7 +138,7 @@ public class TracDownloader {
 
     private String getUrl() {
 
-        String url = project.getIssueManagement().getUrl();
+        String url = project.getModel().getIssueManagement().getUrl();
 
         if (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
@@ -147,7 +147,7 @@ public class TracDownloader {
         return url;
     }
 
-    public void setProject(MavenProject project) {
+    public void setProject(Project project) {
         this.project = project;
     }
 

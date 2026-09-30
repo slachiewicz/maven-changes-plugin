@@ -21,7 +21,7 @@ package org.apache.maven.plugins.changes.issues;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +58,7 @@ public class IssueManagementSystemTest {
 
         try {
             ims.applyConfiguration(issueTypes);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             fail();
         }
     }
@@ -71,7 +71,7 @@ public class IssueManagementSystemTest {
         try {
             ims.applyConfiguration(issueTypes);
             fail("Exception not thrown for invalid group name");
-        } catch (MojoExecutionException ignored) {
+        } catch (MojoException ignored) {
 
         }
     }

@@ -21,7 +21,7 @@ package org.apache.maven.plugins.changes;
 import java.io.File;
 import java.util.List;
 
-import org.apache.maven.plugin.testing.SilentLog;
+import org.apache.maven.api.plugin.Log;
 import org.apache.maven.plugins.changes.model.Action;
 import org.apache.maven.plugins.changes.model.Release;
 import org.junit.jupiter.api.Test;
@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Olivier Lamy
@@ -45,7 +46,7 @@ public class ChangesXMLTest {
     @Test
     public void testParseChangesFile() {
         File changesFile = new File(getBasedir() + "/src/test/unit/changes.xml");
-        ChangesXML changesXML = new ChangesXML(changesFile, new SilentLog());
+        ChangesXML changesXML = new ChangesXML(changesFile, mock(Log.class));
         assertNotNull(changesXML.getChangesDocument());
         assertEquals("Changes report Project", changesXML.getTitle());
 
@@ -80,7 +81,7 @@ public class ChangesXMLTest {
         File changesFile = new File(getBasedir() + "/src/test/unit/invalid-changes.xml");
 
         try {
-            new ChangesXML(changesFile, new SilentLog());
+            new ChangesXML(changesFile, mock(Log.class));
             fail("Should have thrown a ChangesXMLRuntimeException due to the invalid changes.xml file");
         } catch (ChangesXMLRuntimeException e) {
             assertEquals("An error occurred when parsing the changes.xml file", e.getMessage());

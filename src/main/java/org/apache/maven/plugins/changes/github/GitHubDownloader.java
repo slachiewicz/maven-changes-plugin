@@ -25,15 +25,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.Project;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.settings.Server;
+import org.apache.maven.api.settings.Settings;
 import org.apache.maven.plugins.changes.issues.Issue;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.settings.Server;
-import org.apache.maven.settings.Settings;
-import org.apache.maven.settings.building.SettingsProblem;
-import org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest;
-import org.apache.maven.settings.crypto.SettingsDecrypter;
-import org.apache.maven.settings.crypto.SettingsDecryptionResult;
 import org.kohsuke.github.GHIssue;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHLabel;
@@ -74,12 +70,12 @@ public class GitHubDownloader {
      */
     private String githubIssueURL;
 
-    public GitHubDownloader(MavenProject project, boolean includeOpenIssues, boolean onlyMilestoneIssues)
+    public GitHubDownloader(Project project, boolean includeOpenIssues, boolean onlyMilestoneIssues)
             throws IOException {
         this.includeOpenIssues = includeOpenIssues;
         this.onlyMilestoneIssues = onlyMilestoneIssues;
 
-        URL githubURL = new URL(project.getIssueManagement().getUrl());
+        URL githubURL = new URL(project.getModel().getIssueManagement().getUrl());
 
         // The githubclient prefers to connect to 'github.com' using the api domain, unlike github enterprise
         // which can connect fine using its domain, so for github.com use empty constructor
@@ -91,7 +87,7 @@ public class GitHubDownloader {
                             + (githubURL.getPort() == -1 ? "" : ":" + githubURL.getPort()));
         }
 
-        this.githubIssueURL = project.getIssueManagement().getUrl();
+        this.githubIssueURL = project.getModel().getIssueManagement().getUrl();
         if (!this.githubIssueURL.endsWith("/")) {
             this.githubIssueURL = this.githubIssueURL + "/";
         }
@@ -179,19 +175,13 @@ public class GitHubDownloader {
         return issueList;
     }
 
-    public void configureAuthentication(
-            SettingsDecrypter decrypter, String githubAPIServerId, Settings settings, Log log) {
+    public void configureAuthentication(String githubAPIServerId, Settings settings, Log log) {
         boolean configured = false;
 
         List<Server> servers = settings.getServers();
 
         for (Server server : servers) {
             if (server.getId().equals(githubAPIServerId)) {
-                SettingsDecryptionResult result = decrypter.decrypt(new DefaultSettingsDecryptionRequest(server));
-                for (SettingsProblem problem : result.getProblems()) {
-                    log.error(problem.getMessage(), problem.getException());
-                }
-                server = result.getServer();
                 String password = server.getPassword();
                 client.withJwtToken(password);
 

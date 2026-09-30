@@ -23,7 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.maven.artifact.versioning.ComparableVersion;
+import org.apache.maven.api.Session;
+import org.apache.maven.api.Version;
 import org.apache.maven.plugins.changes.issues.Issue;
 import org.apache.maven.plugins.changes.issues.IssueManagementSystem;
 import org.apache.maven.plugins.changes.model.Action;
@@ -59,9 +60,10 @@ public class IssueAdapter {
      * Adapt a <code>List</code> of <code>Issue</code>s to a <code>List</code> of <code>Release</code>s.
      *
      * @param issues The issues
+     * @param session The session, used to compare the versions
      * @return A list of releases
      */
-    public List<Release> getReleases(List<Issue> issues) {
+    public List<Release> getReleases(List<Issue> issues, Session session) {
         // A Map of releases keyed by fixVersion
         Map<String, Release> releasesMap = new HashMap<>();
 
@@ -89,8 +91,8 @@ public class IssueAdapter {
         // Extract the releases from the Map to a sorted List. Releases are sorted by descending order of version.
         List<Release> allReleases = new ArrayList<>(releasesMap.values());
         allReleases.sort((release1, release2) -> {
-            ComparableVersion version1 = new ComparableVersion(release1.getVersion());
-            ComparableVersion version2 = new ComparableVersion(release2.getVersion());
+            Version version1 = session.parseVersion(release1.getVersion());
+            Version version2 = session.parseVersion(release2.getVersion());
             return version2.compareTo(version1);
         });
 

@@ -23,7 +23,7 @@ import java.io.FileInputStream;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
 import org.apache.maven.plugins.changes.model.Body;
 import org.apache.maven.plugins.changes.model.ChangesDocument;
 import org.apache.maven.plugins.changes.model.Properties;
