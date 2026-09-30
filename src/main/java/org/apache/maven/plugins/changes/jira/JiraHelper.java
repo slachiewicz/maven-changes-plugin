@@ -29,7 +29,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
 
 /**
  * A helper class with common JIRA related functionality.

@@ -21,7 +21,7 @@ package org.apache.maven.plugins.changes.issues;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,14 +61,14 @@ public class IssueUtilsTest {
 
             filteredIssues = IssueUtils.filterIssuesWithVersionPrefix(issueList, "myPrefix-");
             assertEquals(1, filteredIssues.size());
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             fail(e.getMessage());
         }
 
         try {
             IssueUtils.filterIssuesWithVersionPrefix(issueList, "yourPrefix-");
             fail("No issues should be found.");
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             // Expected
         }
     }

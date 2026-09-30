@@ -30,15 +30,12 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.List;
 
-import org.apache.maven.model.Developer;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Execute;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.model.Developer;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Execute;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 import org.apache.maven.plugins.changes.announcement.mailsender.ProjectJavamailMailSender;
-import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.logging.Logger;
-import org.codehaus.plexus.logging.console.ConsoleLogger;
 import org.codehaus.plexus.mailsender.MailMessage;
 import org.codehaus.plexus.mailsender.MailSenderException;
 import org.codehaus.plexus.util.IOUtil;
@@ -50,18 +47,12 @@ import org.codehaus.plexus.util.IOUtil;
  * @version $Id$
  * @since 2.0-beta-2
  */
-@Mojo(name = "announcement-mail", threadSafe = true)
+@Mojo(name = "announcement-mail")
 @Execute(goal = "announcement-generate")
 public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
     // =========================================
     // announcement-mail goal fields
     // =========================================
-
-    /**
-     * Possible senders.
-     */
-    @Parameter(property = "project.developers", required = true, readonly = true)
-    private List<Developer> from;
 
     /**
      * The id of the developer sending the announcement mail. Only used if the {@code mailSender} attribute is not set.
@@ -123,11 +114,6 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
     private String password;
 
     /**
-     */
-    @Parameter(defaultValue = "${project}", readonly = true, required = true)
-    private MavenProject project;
-
-    /**
      * Smtp Server.
      */
     @Parameter(property = "changes.smtpHost", required = true)
@@ -159,7 +145,7 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
     // CHECKSTYLE_OFF: LineLength
     @Parameter(
             property = "changes.subject",
-            defaultValue = "[ANNOUNCEMENT] - ${project.name} ${project.version} released",
+            defaultValue = "[ANNOUNCEMENT] - ${project.model.name} ${project.version} released",
             required = true)
     private String subject;
     // CHECKSTYLE_ON: LineLength
@@ -218,21 +204,13 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
 
     private ProjectJavamailMailSender mailer = new ProjectJavamailMailSender();
 
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
 
         // Run only at the execution root
         if (runOnlyAtExecutionRoot && !isThisTheExecutionRoot()) {
             getLog().info("Skipping the announcement mail in this project because it's not the Execution Root");
         } else {
             File file = new File(announcementDirectory, announcementFile);
-
-            ConsoleLogger logger = new ConsoleLogger(Logger.LEVEL_INFO, "base");
-
-            if (getLog().isDebugEnabled()) {
-                logger.setThreshold(Logger.LEVEL_DEBUG);
-            }
-
-            mailer.enableLogging(logger);
 
             mailer.setSmtpHost(getSmtpHost());
 
@@ -259,7 +237,7 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
 
                 sendMessage();
             } else {
-                throw new MojoExecutionException("Announcement file " + file + " not found...");
+                throw new MojoException("Announcement file " + file + " not found...");
             }
         }
     }
@@ -267,16 +245,16 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
     /**
      * Send the email.
      *
-     * @throws MojoExecutionException if the mail could not be sent
+     * @throws MojoException if the mail could not be sent
      */
-    protected void sendMessage() throws MojoExecutionException {
+    protected void sendMessage() throws MojoException {
         File file = new File(announcementDirectory, announcementFile);
         String email = "";
         final MailSender ms = getActualMailSender();
         final String fromName = ms.getName();
         final String fromAddress = ms.getEmail();
         if (fromAddress == null || fromAddress.isEmpty()) {
-            throw new MojoExecutionException("Invalid mail sender: name and email is mandatory (" + ms + ").");
+            throw new MojoException("Invalid mail sender: name and email is mandatory (" + ms + ").");
         }
         getLog().info("Using this sender for email announcement: " + fromAddress + " < " + fromName + " > ");
         try {
@@ -311,7 +289,7 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
             mailer.send(mailMsg);
             getLog().info("Sent...");
         } catch (MailSenderException e) {
-            throw new MojoExecutionException("Failed to send email < " + email + " >", e);
+            throw new MojoException("Failed to send email < " + email + " >", e);
         }
     }
 
@@ -320,9 +298,9 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
      *
      * @param file the file to be read
      * @return Return the announcement text
-     * @throws MojoExecutionException if the file could not be found, or if the encoding is unsupported
+     * @throws MojoException if the file could not be found, or if the encoding is unsupported
      */
-    protected String readAnnouncement(File file) throws MojoExecutionException {
+    protected String readAnnouncement(File file) throws MojoException {
         try {
             if (templateEncoding == null || templateEncoding.isEmpty()) {
                 templateEncoding = Charset.defaultCharset().displayName();
@@ -334,11 +312,11 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
                 return IOUtil.toString(reader);
             }
         } catch (FileNotFoundException fnfe) {
-            throw new MojoExecutionException("File not found. " + file);
+            throw new MojoException("File not found. " + file);
         } catch (UnsupportedEncodingException uee) {
-            throw new MojoExecutionException("Unsupported encoding: '" + templateEncoding + "'");
+            throw new MojoException("Unsupported encoding: '" + templateEncoding + "'");
         } catch (IOException ioe) {
-            throw new MojoExecutionException("Failed to read the announcement file.", ioe);
+            throw new MojoException("Failed to read the announcement file.", ioe);
         }
     }
 
@@ -352,21 +330,23 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
      * </ul>
      *
      * @return the mail sender to use
-     * @throws MojoExecutionException if the mail sender could not be retrieved
+     * @throws MojoException if the mail sender could not be retrieved
      */
-    protected MailSender getActualMailSender() throws MojoExecutionException {
+    protected MailSender getActualMailSender() throws MojoException {
         if (senderString != null) {
             try {
                 InternetAddress ia = new InternetAddress(senderString, true);
                 return new MailSender(ia.getPersonal(), ia.getAddress());
             } catch (AddressException e) {
-                throw new MojoExecutionException("Invalid value for change.sender: ", e);
+                throw new MojoException("Invalid value for change.sender: ", e);
             }
         }
         if (mailSender != null && mailSender.getEmail() != null) {
             return mailSender;
-        } else if (from == null || from.isEmpty()) {
-            throw new MojoExecutionException("The <developers> section in your pom should not be empty. "
+        }
+        List<Developer> from = project.getModel().getDevelopers();
+        if (from == null || from.isEmpty()) {
+            throw new MojoException("The <developers> section in your pom should not be empty. "
                     + "Add a <developer> entry or set the mailSender parameter.");
         } else if (fromDeveloperId == null) {
             final Developer dev = from.get(0);
@@ -377,7 +357,7 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
                     return new MailSender(developer.getName(), developer.getEmail());
                 }
             }
-            throw new MojoExecutionException(
+            throw new MojoException(
                     "Missing developer with id '" + fromDeveloperId + "' in the <developers> section in your pom.");
         }
     }
@@ -402,14 +382,6 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
         this.ccAddresses = ccAddresses;
     }
 
-    public List<Developer> getFrom() {
-        return from;
-    }
-
-    public void setFrom(List<Developer> from) {
-        this.from = from;
-    }
-
     public String getFromDeveloperId() {
         return fromDeveloperId;
     }
@@ -432,14 +404,6 @@ public class AnnouncementMailMojo extends AbstractAnnouncementMojo {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public MavenProject getProject() {
-        return project;
-    }
-
-    public void setProject(MavenProject project) {
-        this.project = project;
     }
 
     public String getSmtpHost() {

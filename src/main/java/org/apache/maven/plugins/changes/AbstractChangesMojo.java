@@ -18,32 +18,24 @@
  */
 package org.apache.maven.plugins.changes;
 
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.Project;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 
 /**
- * Abstract superclass for announcement mojos.
- *
- * @version $Id$
- * @since 2.9
+ * Base class for the non-report goals of this plugin.
  */
-public abstract class AbstractChangesMojo extends AbstractMojo {
+public abstract class AbstractChangesMojo implements Mojo {
     /**
-     * The current project base directory.
-     *
-     * @since 2.1
+     * The current project.
      */
-    @Parameter(property = "basedir", required = true)
-    protected String basedir;
+    @Inject
+    protected Project project;
 
-    /**
-     * The Maven Session.
-     *
-     * @since 2.3
-     */
-    @Parameter(defaultValue = "${session}", readonly = true, required = true)
-    protected MavenSession mavenSession;
+    @Inject
+    private Log log;
 
     /**
      * This will cause the execution to be run only at the top of a given module tree. That is, run in the project
@@ -54,6 +46,10 @@ public abstract class AbstractChangesMojo extends AbstractMojo {
     @Parameter(property = "changes.runOnlyAtExecutionRoot", defaultValue = "false")
     protected boolean runOnlyAtExecutionRoot;
 
+    protected Log getLog() {
+        return log;
+    }
+
     /**
      * Returns <code>true</code> if the current project is located at the Execution Root Directory (where mvn was
      * launched).
@@ -61,9 +57,7 @@ public abstract class AbstractChangesMojo extends AbstractMojo {
      * @return <code>true</code> if the current project is at the Execution Root
      */
     protected boolean isThisTheExecutionRoot() {
-        getLog().debug("Root Folder:" + mavenSession.getExecutionRootDirectory());
-        getLog().debug("Current Folder:" + basedir);
-        boolean result = mavenSession.getExecutionRootDirectory().equalsIgnoreCase(basedir);
+        boolean result = project.isTopProject();
         if (result) {
             getLog().debug("This is the execution root.");
         } else {

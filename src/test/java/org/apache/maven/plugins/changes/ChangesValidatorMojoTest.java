@@ -18,10 +18,10 @@
  */
 package org.apache.maven.plugins.changes;
 
+import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.testing.InjectMojo;
 import org.apache.maven.api.plugin.testing.MojoParameter;
 import org.apache.maven.api.plugin.testing.MojoTest;
-import org.apache.maven.plugin.MojoExecutionException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.fail;
@@ -51,8 +51,8 @@ public class ChangesValidatorMojoTest {
     public void testValidationFailedWithMojoFailure(ChangesValidatorMojo mojo) throws Exception {
         try {
             mojo.execute();
-            fail(" A MojoExecutionException should occur here. Changes file is not valid and failOnError is true ");
-        } catch (MojoExecutionException e) {
+            fail(" A MojoException should occur here. Changes file is not valid and failOnError is true ");
+        } catch (MojoException e) {
             // expected
         }
     }

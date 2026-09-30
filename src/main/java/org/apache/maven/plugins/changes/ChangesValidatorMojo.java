@@ -18,14 +18,13 @@
  */
 package org.apache.maven.plugins.changes;
 
-import javax.inject.Inject;
-
 import java.io.File;
 import java.util.List;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
 import org.apache.maven.plugins.changes.schema.ChangesSchemaValidator;
 import org.apache.maven.plugins.changes.schema.SchemaValidatorException;
 import org.apache.maven.plugins.changes.schema.XmlValidationHandler;
@@ -38,7 +37,7 @@ import org.xml.sax.SAXParseException;
  * @version $Id$
  * @since 2.1
  */
-@Mojo(name = "changes-validate", threadSafe = true)
+@Mojo(name = "changes-validate")
 public class ChangesValidatorMojo extends AbstractChangesMojo {
 
     /**
@@ -56,20 +55,16 @@ public class ChangesValidatorMojo extends AbstractChangesMojo {
     /**
      * The path of the <code>changes.xml</code> file that will be validated.
      */
-    @Parameter(property = "changes.xmlPath", defaultValue = "src/changes/changes.xml")
+    @Parameter(property = "changes.xmlPath", defaultValue = "${project.basedir}/src/changes/changes.xml")
     private File xmlPath;
 
-    private ChangesSchemaValidator changesSchemaValidator;
-
     @Inject
-    public ChangesValidatorMojo(ChangesSchemaValidator changesSchemaValidator) {
-        this.changesSchemaValidator = changesSchemaValidator;
-    }
+    private ChangesSchemaValidator changesSchemaValidator;
 
     /**
      * @see org.apache.maven.plugin.Mojo#execute()
      */
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         // Run only at the execution root
         if (runOnlyAtExecutionRoot && !isThisTheExecutionRoot()) {
             getLog().info("Skipping the changes validate in this project because it's not the Execution Root");
@@ -86,7 +81,7 @@ public class ChangesValidatorMojo extends AbstractChangesMojo {
                 if (hasErrors) {
                     logSchemaValidation(xmlValidationHandler.getErrors());
                     if (failOnError) {
-                        throw new MojoExecutionException("changes.xml file " + xmlPath.getAbsolutePath()
+                        throw new MojoException("changes.xml file " + xmlPath.getAbsolutePath()
                                 + " is not valid. See previous errors.");
                     } else {
                         getLog().info(" skip previous validation errors due to failOnError=false.");
@@ -94,7 +89,7 @@ public class ChangesValidatorMojo extends AbstractChangesMojo {
                 }
             } catch (SchemaValidatorException e) {
                 if (failOnError) {
-                    throw new MojoExecutionException(
+                    throw new MojoException(
                             "changes.xml file is not valid: " + xmlPath.getAbsolutePath() + ": " + e.getMessage(), e);
                 }
             }

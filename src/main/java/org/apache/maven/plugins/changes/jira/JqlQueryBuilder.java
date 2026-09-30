@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Locale;
 
 import org.apache.commons.lang3.ArraySorter;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
 
 /**
  * Builder for a JIRA query using the JIRA query language. Only a limited set of JQL is supported.

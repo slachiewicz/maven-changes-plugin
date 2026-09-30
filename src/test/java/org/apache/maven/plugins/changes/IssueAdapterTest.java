@@ -21,14 +21,21 @@ package org.apache.maven.plugins.changes;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.maven.api.Session;
+import org.apache.maven.impl.DefaultModelVersionParser;
+import org.apache.maven.impl.DefaultVersionParser;
 import org.apache.maven.plugins.changes.issues.Issue;
 import org.apache.maven.plugins.changes.issues.IssueManagementSystem;
 import org.apache.maven.plugins.changes.jira.JIRAIssueManagementSystem;
 import org.apache.maven.plugins.changes.model.Action;
 import org.apache.maven.plugins.changes.model.Release;
+import org.eclipse.aether.util.version.GenericVersionScheme;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Alan Parkinson
@@ -159,7 +166,12 @@ public class IssueAdapterTest {
                 createIssue("TST-5", "Improvement", "4"),
                 createIssue("TST-6", "Epic", "0.1.1"));
 
-        List<Release> releases = adapter.getReleases(issues);
+        DefaultVersionParser versionParser =
+                new DefaultVersionParser(new DefaultModelVersionParser(new GenericVersionScheme()));
+        Session session = mock(Session.class);
+        when(session.parseVersion(anyString())).thenAnswer(i -> versionParser.parseVersion(i.getArgument(0)));
+
+        List<Release> releases = adapter.getReleases(issues, session);
 
         assertEquals(5, releases.size());
         assertEquals("4", releases.get(0).getVersion());

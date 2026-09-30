@@ -21,7 +21,7 @@ package org.apache.maven.plugins.changes.issues;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 
 /**
  * A utility class for working with issue objects.
@@ -39,10 +39,9 @@ public class IssueUtils {
      * @param issues A list of issues
      * @param prefix The prefix of the "Fix Version" that should match
      * @return A <code>List</code> of issues fixed in versions that match the supplied prefix
-     * @throws org.apache.maven.plugin.MojoExecutionException If no issues could be found for the supplied prefix
+     * @throws org.apache.maven.api.plugin.MojoException If no issues could be found for the supplied prefix
      */
-    public static List<Issue> filterIssuesWithVersionPrefix(List<Issue> issues, String prefix)
-            throws MojoExecutionException {
+    public static List<Issue> filterIssuesWithVersionPrefix(List<Issue> issues, String prefix) throws MojoException {
         List<Issue> filteredIssues = new ArrayList<>();
         boolean isFound = false;
         Issue issue;
@@ -62,7 +61,7 @@ public class IssueUtils {
         }
 
         if (!isFound) {
-            throw new MojoExecutionException("Couldn't find any issues with a Fix Version prefix of '" + prefix
+            throw new MojoException("Couldn't find any issues with a Fix Version prefix of '" + prefix
                     + "' among the supplied issues: " + toString(issues));
         }
         return filteredIssues;

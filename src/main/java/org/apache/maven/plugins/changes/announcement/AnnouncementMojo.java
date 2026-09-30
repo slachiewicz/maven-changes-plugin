@@ -18,8 +18,6 @@
  */
 package org.apache.maven.plugins.changes.announcement;
 
-import javax.inject.Inject;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -30,10 +28,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.api.Session;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
+import org.apache.maven.api.settings.Settings;
 import org.apache.maven.plugins.changes.ChangesXML;
 import org.apache.maven.plugins.changes.IssueAdapter;
 import org.apache.maven.plugins.changes.ProjectUtils;
@@ -48,16 +50,12 @@ import org.apache.maven.plugins.changes.jira.RestJiraDownloader;
 import org.apache.maven.plugins.changes.model.Release;
 import org.apache.maven.plugins.changes.trac.TracDownloader;
 import org.apache.maven.plugins.changes.trac.TracIssueManagmentSystem;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.settings.Settings;
-import org.apache.maven.settings.crypto.SettingsDecrypter;
 import org.apache.velocity.Template;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.context.Context;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.tools.ToolManager;
-import org.codehaus.plexus.velocity.VelocityComponent;
 
 /**
  * Goal which generates an announcement from the announcement template.
@@ -66,7 +64,7 @@ import org.codehaus.plexus.velocity.VelocityComponent;
  * @version $Id$
  * @since 2.0-beta-2
  */
-@Mojo(name = "announcement-generate", threadSafe = true)
+@Mojo(name = "announcement-generate")
 public class AnnouncementMojo extends AbstractAnnouncementMojo {
     private static final String CHANGES_XML = "changes.xml";
 
@@ -95,13 +93,13 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
     /**
      */
-    @Parameter(property = "project.artifactId", readonly = true)
+    @Parameter(defaultValue = "${project.artifactId}", readonly = true)
     private String artifactId;
 
     /**
      * Name of the team that develops the artifact. This parameter will be passed to the template.
      */
-    @Parameter(property = "changes.developmentTeam", defaultValue = "${project.name} team", required = true)
+    @Parameter(property = "changes.developmentTeam", defaultValue = "${project.model.name} team", required = true)
     private String developmentTeam;
 
     /**
@@ -112,13 +110,13 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
     /**
      */
-    @Parameter(property = "project.groupId", readonly = true)
+    @Parameter(defaultValue = "${project.groupId}", readonly = true)
     private String groupId;
 
     /**
      * Short description or introduction of the released artifact. This parameter will be passed to the template.
      */
-    @Parameter(defaultValue = "${project.description}")
+    @Parameter(defaultValue = "${project.model.description}")
     private String introduction;
 
     /**
@@ -159,14 +157,8 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
     /**
      * Packaging structure for the artifact.
      */
-    @Parameter(property = "project.packaging", readonly = true)
+    @Parameter(defaultValue = "${project.model.packaging}", readonly = true)
     private String packaging;
-
-    /**
-     * The Maven Project.
-     */
-    @Parameter(defaultValue = "${project}", readonly = true, required = true)
-    private MavenProject project;
 
     /**
      * The Velocity template used to format the announcement.
@@ -210,7 +202,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
     /**
      * Distribution URL of the artifact. This parameter will be passed to the template.
      */
-    @Parameter(property = "project.url")
+    @Parameter(defaultValue = "${project.model.url}")
     private String url;
 
     /**
@@ -229,7 +221,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
     /**
      * The path of the changes.xml file.
      */
-    @Parameter(defaultValue = "${basedir}/src/changes/changes.xml")
+    @Parameter(defaultValue = "${project.basedir}/src/changes/changes.xml")
     private File xmlPath;
 
     // =======================================//
@@ -293,12 +285,6 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
      */
     @Parameter(property = "changes.resolutionIds", defaultValue = "Fixed")
     private String resolutionIds;
-
-    /**
-     * Settings XML configuration.
-     */
-    @Parameter(defaultValue = "${settings}", readonly = true, required = true)
-    private Settings settings;
 
     /**
      * Include issues from JIRA with these status ids. Multiple status ids can be specified as a comma separated list of
@@ -411,24 +397,14 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
     @Parameter(defaultValue = "false")
     private boolean includeOpenIssues;
 
+    @Inject
+    private Session session;
+
     private ChangesXML xml;
 
     /**
      * Velocity Component.
      */
-    private VelocityComponent velocity;
-
-    /**
-     * Component used to decrypt server information.
-     */
-    private final SettingsDecrypter settingsDecrypter;
-
-    @Inject
-    public AnnouncementMojo(VelocityComponent velocity, SettingsDecrypter settingsDecrypter) {
-        this.velocity = velocity;
-        this.settingsDecrypter = settingsDecrypter;
-    }
-
     // =======================================//
     // announcement-generate execution //
     // =======================================//
@@ -436,9 +412,9 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
     /**
      * Generate the template
      *
-     * @throws MojoExecutionException in case of errors
+     * @throws MojoException in case of errors
      */
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoException {
         // Run only at the execution root
         if (runOnlyAtExecutionRoot && !isThisTheExecutionRoot()) {
             getLog().info("Skipping the announcement generation in this project because it's not the Execution Root");
@@ -471,8 +447,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
                     releases = ReleaseUtils.mergeReleases(releases, jiraReleases);
                     getLog().info("Including issues from JIRA in announcement...");
                 } else {
-                    throw new MojoExecutionException(
-                            "Something is wrong with the Issue Management section. " + message);
+                    throw new MojoException("Something is wrong with the Issue Management section. " + message);
                 }
             }
 
@@ -485,8 +460,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
                     releases = ReleaseUtils.mergeReleases(releases, tracReleases);
                     getLog().info("Including issues from Trac in announcement...");
                 } else {
-                    throw new MojoExecutionException(
-                            "Something is wrong with the Issue Management section. " + message);
+                    throw new MojoException("Something is wrong with the Issue Management section. " + message);
                 }
             }
 
@@ -497,8 +471,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
                     releases = ReleaseUtils.mergeReleases(releases, gitHubReleases);
                     getLog().info("Including issues from GitHub in announcement...");
                 } else {
-                    throw new MojoExecutionException(
-                            "Something is wrong with the Issue Management section. " + message);
+                    throw new MojoException("Something is wrong with the Issue Management section. " + message);
                 }
             }
 
@@ -513,8 +486,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
             // Generate the report
             if (releases == null || releases.isEmpty()) {
-                throw new MojoExecutionException(
-                        "No releases found in any of the " + "configured issue management systems.");
+                throw new MojoException("No releases found in any of the " + "configured issue management systems.");
             } else {
                 doGenerate(releases);
             }
@@ -525,9 +497,9 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
      * Add the parameters to velocity context
      *
      * @param releases A <code>List</code> of <code>Release</code>s
-     * @throws MojoExecutionException in case of errors
+     * @throws MojoException in case of errors
      */
-    public void doGenerate(List<Release> releases) throws MojoExecutionException {
+    public void doGenerate(List<Release> releases) throws MojoException {
         String version = (versionPrefix == null ? "" : versionPrefix) + getVersion();
 
         getLog().debug("Generating announcement for version [" + version + "]. Found these releases: "
@@ -536,7 +508,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
         doGenerate(releases, ReleaseUtils.getLatestRelease(releases, version));
     }
 
-    protected void doGenerate(List<Release> releases, Release release) throws MojoExecutionException {
+    protected void doGenerate(List<Release> releases, Release release) throws MojoException {
         try {
             ToolManager toolManager = new ToolManager(true);
             Context context = toolManager.createContext();
@@ -567,7 +539,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
             context.put("urlDownload", getUrlDownload());
 
-            context.put("project", project);
+            context.put("project", project.getModel());
 
             if (announceParameters == null) {
                 // empty Map to prevent NPE in velocity execution
@@ -578,9 +550,9 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
             processTemplate(context, announcementDirectory, template, announcementFile);
         } catch (ResourceNotFoundException rnfe) {
-            throw new MojoExecutionException("Resource not found.", rnfe);
+            throw new MojoException("Resource not found.", rnfe);
         } catch (VelocityException ve) {
-            throw new MojoExecutionException(ve.toString(), ve);
+            throw new MojoException(ve.toString(), ve);
         }
     }
 
@@ -592,10 +564,10 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
      * @param template velocity template which will the context be merged
      * @param announcementFile the file name of the generated announcement
      * @throws VelocityException in case of error processing the Velocity template
-     * @throws MojoExecutionException in case of errors
+     * @throws MojoException in case of errors
      */
     public void processTemplate(Context context, File outputDirectory, String template, String announcementFile)
-            throws VelocityException, MojoExecutionException {
+            throws VelocityException, MojoException {
 
         // Use the name of the template as a default value
         if (announcementFile == null || announcementFile.isEmpty()) {
@@ -604,15 +576,15 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
         if (!outputDirectory.exists()) {
             if (!outputDirectory.mkdirs()) {
-                throw new MojoExecutionException("Failed to create directory " + outputDirectory);
+                throw new MojoException("Failed to create directory " + outputDirectory);
             }
         }
 
         File f = new File(outputDirectory, announcementFile);
 
-        VelocityEngine engine = velocity.getEngine();
+        VelocityEngine engine = createVelocityEngine();
 
-        engine.setApplicationAttribute("baseDirectory", basedir);
+        engine.setApplicationAttribute("baseDirectory", project.getBasedir().toString());
 
         if (templateEncoding == null || templateEncoding.isEmpty()) {
             templateEncoding = Charset.defaultCharset().name();
@@ -629,11 +601,37 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
         } catch (VelocityException ve) {
             throw ve;
         } catch (RuntimeException | IOException e) {
-            throw new MojoExecutionException(e.toString(), e);
+            throw new MojoException(e.toString(), e);
         }
     }
 
-    protected List<Release> getJiraReleases() throws MojoExecutionException {
+    /**
+     * Creates the Velocity engine with the settings of the former <code>plexus-velocity</code> component, which is
+     * a Plexus component and cannot be injected on the Maven 4 API.
+     */
+    private VelocityEngine createVelocityEngine() {
+        Properties properties = new Properties();
+        properties.setProperty("resource.loaders", "classpath,file");
+        properties.setProperty(
+                "resource.loader.classpath.class",
+                "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
+        properties.setProperty(
+                "resource.loader.file.class", "org.apache.velocity.runtime.resource.loader.FileResourceLoader");
+        properties.setProperty("resource.loader.file.path", "");
+        properties.setProperty("runtime.log.log_invalid_references", "false");
+        properties.setProperty("resource.manager.log_when_found", "false");
+        properties.setProperty(
+                "event_handler.include.class", "org.apache.velocity.app.event.implement.IncludeRelativePath");
+        properties.setProperty("velocimacro.inline.replace_global", "true");
+        properties.setProperty("parser.space_gobbling", "bc");
+
+        VelocityEngine engine = new VelocityEngine();
+        engine.setProperties(properties);
+        engine.init();
+        return engine;
+    }
+
+    protected List<Release> getJiraReleases() throws MojoException {
         RestJiraDownloader jiraDownloader = new RestJiraDownloader();
 
         jiraDownloader.setLog(getLog());
@@ -644,8 +642,7 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
         jiraDownloader.setMavenProject(project);
 
-        jiraDownloader.setSettings(settings);
-        jiraDownloader.setSettingsDecrypter(settingsDecrypter);
+        jiraDownloader.setSettings(getSettings());
 
         jiraDownloader.setNbEntries(maxEntries);
         jiraDownloader.setOnlyCurrentVersion(onlyCurrentVersion);
@@ -686,11 +683,11 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
 
             return getReleases(issueList, new JIRAIssueManagementSystem());
         } catch (Exception e) {
-            throw new MojoExecutionException("Failed to extract issues from JIRA.", e);
+            throw new MojoException("Failed to extract issues from JIRA.", e);
         }
     }
 
-    private List<Release> getReleases(List<Issue> issues, IssueManagementSystem ims) throws MojoExecutionException {
+    private List<Release> getReleases(List<Issue> issues, IssueManagementSystem ims) throws MojoException {
         if (issueTypes != null) {
             ims.applyConfiguration(issueTypes);
         }
@@ -698,11 +695,11 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
             return Collections.emptyList();
         } else {
             IssueAdapter adapter = new IssueAdapter(ims);
-            return adapter.getReleases(issues);
+            return adapter.getReleases(issues, session);
         }
     }
 
-    protected List<Release> getTracReleases() throws MojoExecutionException {
+    protected List<Release> getTracReleases() throws MojoException {
         TracDownloader issueDownloader = new TracDownloader();
 
         issueDownloader.setProject(project);
@@ -716,25 +713,29 @@ public class AnnouncementMojo extends AbstractAnnouncementMojo {
         try {
             return getReleases(issueDownloader.getIssueList(), new TracIssueManagmentSystem());
         } catch (Exception e) {
-            throw new MojoExecutionException("Failed to extract issues from Trac.", e);
+            throw new MojoException("Failed to extract issues from Trac.", e);
         }
     }
 
-    protected List<Release> getGitHubReleases() throws MojoExecutionException {
+    protected List<Release> getGitHubReleases() throws MojoException {
         try {
             GitHubDownloader issueDownloader = new GitHubDownloader(project, includeOpenIssues, true);
 
-            issueDownloader.configureAuthentication(settingsDecrypter, githubAPIServerId, settings, getLog());
+            issueDownloader.configureAuthentication(githubAPIServerId, getSettings(), getLog());
 
             return getReleases(issueDownloader.getIssueList(), new GitHubIssueManagementSystem());
         } catch (Exception e) {
-            throw new MojoExecutionException("Failed to extract issues from GitHub.", e);
+            throw new MojoException("Failed to extract issues from GitHub.", e);
         }
     }
 
     /*
      * accessors
      */
+
+    private Settings getSettings() {
+        return session.getSettings();
+    }
 
     public String getArtifactId() {
         return artifactId;

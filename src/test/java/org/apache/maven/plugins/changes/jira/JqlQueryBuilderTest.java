@@ -21,10 +21,11 @@ package org.apache.maven.plugins.changes.jira;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
-import org.apache.maven.plugin.testing.SilentLog;
+import org.apache.maven.api.plugin.Log;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 /**
  * Test class for {@link JqlQueryBuilder}
@@ -173,6 +174,6 @@ public class JqlQueryBuilderTest {
     }
 
     private JqlQueryBuilder createBuilder() {
-        return new JqlQueryBuilder(new SilentLog());
+        return new JqlQueryBuilder(mock(Log.class));
     }
 }
